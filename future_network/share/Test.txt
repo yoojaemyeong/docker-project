@@ -1,0 +1,6 @@
+Test
+uworker1
+uworker2
+192.168.56.10 umaster umaster
+192.168.56.11 uworker1 uworker1
+192.168.56.12 uworker2 uworker2

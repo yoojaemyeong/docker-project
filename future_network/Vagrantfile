@@ -1,0 +1,50 @@
+Vagrant.configure("2") do |config|
+  config.vm.box = "bento/ubuntu-22.04"
+  config.vm.provider "virtualbox" do |vb|
+    vb.memory = "2048"
+    vb.cpus = 2
+  end  
+  # 호스트와 게시트간 폴더 공유
+  config.vm.synced_folder "F:\\Projects\\future_network\\share", "/home/vagrant/share"
+  config.vm.provision "shell", inline: <<-SHELL
+      mkdir /home/vagrant/share
+      sudo apt-get -y update
+      sudo apt-get -y install -y apt-transport-https ca-certificates curl
+      sudo swapoff -a
+      sudo apt install -y docker.io
+      sudo systemctl enable docker
+      sudo systemctl start docker 
+      sudo usermod -aG docker vagrant
+      sudo chmod 666 /var/run/docker.sock
+      sudo apt update
+      sudo snap install microk8s --classic
+      sudo usermod -aG microk8s vagrant
+      newgrp microk8s
+      sudo snap alias microk8s.kubectl kubectl
+      sudo echo -n '192.168.56.10 umaster umaster 
+192.168.56.11 uworker1 uworker1     
+192.168.56.12 uworker2 uworker2' >> /etc/hosts
+  SHELL
+
+  # Master node
+  config.vm.define "umaster" do |master|
+    master.vm.hostname = "umaster"
+    master.vm.network "private_network", ip: "192.168.56.10"
+    master.vm.provider "virtualbox" do |vb|
+      vb.name = "umaster"
+      vb.customize ["modifyvm",:id,"--groups","/UbuntuKube"]
+    end
+  end
+
+  # Worker nodes
+  (1..2).each do |i|
+    config.vm.define "uworker#{i}" do |node|
+      node.vm.hostname = "uworker#{i}"
+      node.vm.network "private_network", ip: "192.168.56.#{10+i}"
+      node.vm.provider "virtualbox" do |vb|
+        vb.name = "uworker#{i}"
+        vb.customize ["modifyvm",:id,"--groups","/UbuntuKube"]
+      end
+    end
+  end
+end
